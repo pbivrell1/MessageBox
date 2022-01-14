@@ -43,13 +43,24 @@ func (m MessageServer) PostGroups(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if val.(int64) > 0 {
+	if val.(int64) != 0 {
 		log.Println("Post groups duplicate key")
 		w.WriteHeader(http.StatusConflict)
 		json.NewEncoder(w).Encode(newGroup)
 		return
 	}
 	for _, name := range newGroup.Usernames {
+		val, err := conn.Do("SISMEMBER", key, name)
+		if err != nil {
+			log.Println("Post users redis error")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if val.(int64) != 0 {
+			//don't add a username if it doesn't correspond to a registered user
+			//error here probably
+			continue
+		}
 		val, err = conn.Do("SADD", key, name)
 		if err != nil {
 			log.Println("Post groups redis error")
@@ -118,7 +129,7 @@ func (m MessageServer) PostUsers(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if val.(int64) == 0 {
+	if val.(int64) != 0 {
 		log.Println("Post users duplicate value")
 		w.WriteHeader(http.StatusConflict)
 		json.NewEncoder(w).Encode(newUser)
