@@ -12,4 +12,4 @@ COPY internal/*.go ./
 
 RUN go build -o /messagebox-server
 
-CMD messagebox-server
+CMD ["/messagebox-server"]

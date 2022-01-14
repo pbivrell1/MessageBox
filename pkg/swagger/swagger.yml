@@ -1,0 +1,351 @@
+openapi: 3.0.0
+servers: []
+info:
+  description: MessageBox is an API for sending messages to friends
+  version: "1.0.0"
+  title: MessageBox API
+paths:
+  /users:
+    post:
+      summary: registers a new user
+      description: Adds an new user who can send and receive messages
+      responses:
+        '201':
+          description: user successfully registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRegistration'
+        '400':
+          description: invalid request
+        '409':
+          description: user with the same username already registered
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegistration'
+  /users/{username}/mailbox:
+    get:
+      summary: gets a user's messages
+      description: Retrieves the messages that have been sent to a user with the newest messages first.
+      parameters:
+        - name: username
+          in: path
+          required: true
+          description: user's username
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+              example: |
+                [
+                  {
+                    "id": 1324,
+                    "sender": "bob",
+                    "recipient": {
+                      "groupname": "all_company",
+                    },
+                    "subject": "Reminder: all-hands call today @ 3:30",
+                    "sentAt": "2019-09-08T12:00:07Z"
+                  },
+                  {
+                    "id": 863,
+                    "re": 847,
+                    "sender": "alice",
+                    "recipient": {
+                      "username": "doug",
+                    },
+                    "subject": "RE: Book Club",
+                    "body": "I would definitely be interested. I can't do Wednesdays though :(",
+                    "sentAt": "2019-09-06T14:26:55Z"
+                  }
+                ]
+        '404':
+          description: user with given username does not exist
+  /groups:
+    post:
+      summary: creates a new group
+      description: Creates a group of users who can receive messages
+      responses:
+        '201':
+          description: group successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupCreation'
+        '400':
+          description: invalid request
+        '409':
+          description: group with the same groupname already registered
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupCreation'
+  /messages:
+    post:
+      summary: creates a new message
+      description: Creates a message to either a user or a goup
+      responses:
+        '201':
+          description: message successfully sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              example: |
+                {
+                  "sender": "peter.epsteen",
+                  "recipient": {
+                    "groupname": "qm_engineering",
+                  },
+                  "subject": "PR For MessageBox",
+                  "body": "I have the first version of messagebox ready to review."
+                  
+                }
+        '400':
+          description: invalid request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComposedMessage'
+            example: |
+              {
+                "id": 291,
+                "sender": "peter.epsteen",
+                "recipient": {
+                  "groupname": "qm_engineering",
+                },
+                "subject": "PR For MessageBox",
+                "body": "I have the first version of messagebox ready to review.",
+                "sentAt": "2019-09-03T17:12:42Z"
+              }
+  /messages/{id}:
+    get:
+      summary: retrieves a new message
+      description: Gets a message that has been previously sent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              example: |
+                {
+                  "id": 5280,
+                  "sender": "peter.epsteen",
+                  "recipient": {
+                    "groupname": "qm_engineering",
+                  },
+                  "subject": "PR For MessageBox",
+                  "body": "I have the first version of messagebox ready to review.",
+                  "sentAt": "2019-09-03T17:12:42Z"
+                }
+        '404':
+          description: message not found
+  /messages/{id}/replies:
+    post:
+      summary: creates a reply to another message
+      description: Creates a message that is a direct reply to another message. If the original message was sent to a user directly, the reply will go to the sender of the original message; and if it was sent to a group, the reply will be sent to the group.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        '201':
+          description: reply successfully sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              example: |
+                {
+                  "id": 5238,
+                  "re": 5229,
+                  "sender": "andrew.meredith",
+                  "recipient": {
+                    "username": "peter.epsteen",
+                  },
+                  "subject": "RE: DI in Go",
+                  "body": "Yeah, Wire looks really cool. Doing DI with codegen makes a lot of sense",
+                  "sentAt": "2019-09-03T18:32:01Z"
+                }
+        '400':
+          description: invalid request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplyMessage'
+    get:
+      summary: retrieves replies to a message
+      description: Gets mesages that were sent as direct replies to this message
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+              example: |
+                [
+                  {
+                    "id": 5238,
+                    "re": 5229,
+                    "sender": "andrew.meredith",
+                    "recipient": {
+                      "username": "peter.epsteen",
+                    },
+                    "subject": "RE: DI in Go",
+                    "body": "Yeah, Wire looks really cool. Doing DI with codegen makes a lot of sense",
+                    "sentAt": "2019-09-03T18:32:01Z"
+                  },
+                  {
+                    "id": 5242,
+                    "re": 5229,
+                    "sender": "andrew.meredith",
+                    "recipient": {
+                      "username": "peter.epsteen",
+                    },
+                    "subject": "RE: DI in Go",
+                    "body": "I take it all back. Codegen is the absolute worst!",
+                    "sentAt": "2019-09-03T18:36:19Z"
+                  }
+                ]
+        '404':
+          description: message not found
+components:
+  schemas:
+    UserRegistration:
+      type: object
+      required:
+        - username
+      properties:
+        username:
+          type: string
+          example: andrew.meredith
+    GroupCreation:
+      type: object
+      required:
+        - groupname
+        - usernames
+      properties:
+        groupname:
+          type: string
+          example: quantummetric
+        usernames:
+          type: array
+          example: ["alice", "bob", "carol"]
+          items:
+            type: string
+    ComposedMessage:
+      required:
+        - sender
+        - recipient
+        - subject
+      properties:
+        sender:
+          type: string
+          example: andrew.meredith
+        recipient:
+          oneOf:
+            - $ref: '#/components/schemas/UserRecipient'
+            - $ref: '#/components/schemas/GroupRecipient'
+        subject:
+          type: string
+          example: "Lunch Plans"
+        body:
+          type: string
+          example: "Want to grab something around noon this Friday?"
+      type: object
+    ReplyMessage:
+      required:
+        - sender
+        - subject
+      properties:
+        sender:
+          type: string
+          example: alice
+        subject:
+          type: string
+          example: "RE: Lunch Plans"
+        body:
+          type: string
+          example: "I'm booked at noon - how about 1:00? Does Thai sound good?"
+      type: object
+    Message:
+      required:
+        - id
+        - sender
+        - recipient
+        - subject
+        - sentAt
+      properties:
+        id:
+          type: number
+          example: 123
+        re:
+          type: number
+          example: 42
+        sender:
+          type: string
+          example: andrew.meredith
+        recipient:
+          oneOf:
+            - $ref: '#/components/schemas/UserRecipient'
+            - $ref: '#/components/schemas/GroupRecipient'
+        subject:
+          type: string
+          example: "Lunch Plans"
+        body:
+          type: string
+          example: "Want to grab something around noon this Friday?"
+        sentAt:
+          type: string
+          format: timestamp
+          example: "2019-09-03T17:12:42Z"
+      type: object
+    UserRecipient:
+      description: A message recipient representing a single user
+      properties:
+        username:
+          type: string
+          example: andrew.meredith
+      type: object
+    GroupRecipient:
+      description: A message recipient representing a group of users
+      properties:
+        groupname:
+          type: string
+          example: quantummetric
+      type: object
