@@ -174,8 +174,15 @@ func (m MessageServer) GetMessagesId(w http.ResponseWriter, r *http.Request, id 
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	var message Message
+	err = json.Unmarshal([]byte(msg), &message)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("Error unmarshalling json:%s\n", err)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(msg)
+	json.NewEncoder(w).Encode(message)
 }
 
 func (m MessageServer) GetMessagesIdReplies(w http.ResponseWriter, r *http.Request, id int64) {
