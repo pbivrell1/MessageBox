@@ -24,13 +24,13 @@ type GroupRecipient struct {
 
 // Message defines model for Message.
 type Message struct {
-	Body      *string     `json:"body,omitempty"`
-	Id        float32     `json:"id"`
-	Re        *float32    `json:"re,omitempty"`
-	Recipient interface{} `json:"recipient"`
+	Id        int64     `json:"id"`
 	Sender    string      `json:"sender"`
-	SentAt    string      `json:"sentAt"`
+	Recipient interface{} `json:"recipient"`
 	Subject   string      `json:"subject"`
+	Body      *string     `json:"body,omitempty"`
+	SentAt    string      `json:"sentAt"`
+	Re        int64    `json:"re,omitempty"`
 }
 
 // ReplyMessage defines model for ReplyMessage.

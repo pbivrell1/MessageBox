@@ -21,13 +21,13 @@ type ServerInterface interface {
 	PostMessages(w http.ResponseWriter, r *http.Request)
 	// retrieves a new message
 	// (GET /messages/{id})
-	GetMessagesId(w http.ResponseWriter, r *http.Request, id float32)
+	GetMessagesId(w http.ResponseWriter, r *http.Request, id int64)
 	// retrieves replies to a message
 	// (GET /messages/{id}/replies)
-	GetMessagesIdReplies(w http.ResponseWriter, r *http.Request, id float32)
+	GetMessagesIdReplies(w http.ResponseWriter, r *http.Request, id int64)
 	// creates a reply to another message
 	// (POST /messages/{id}/replies)
-	PostMessagesIdReplies(w http.ResponseWriter, r *http.Request, id float32)
+	PostMessagesIdReplies(w http.ResponseWriter, r *http.Request, id int64)
 	// registers a new user
 	// (POST /users)
 	PostUsers(w http.ResponseWriter, r *http.Request)
@@ -82,7 +82,7 @@ func (siw *ServerInterfaceWrapper) GetMessagesId(w http.ResponseWriter, r *http.
 	var err error
 
 	// ------------- Path parameter "id" -------------
-	var id float32
+	var id int64
 
 	err = runtime.BindStyledParameter("simple", false, "id", chi.URLParam(r, "id"), &id)
 	if err != nil {
@@ -108,7 +108,7 @@ func (siw *ServerInterfaceWrapper) GetMessagesIdReplies(w http.ResponseWriter, r
 	var err error
 
 	// ------------- Path parameter "id" -------------
-	var id float32
+	var id int64
 
 	err = runtime.BindStyledParameter("simple", false, "id", chi.URLParam(r, "id"), &id)
 	if err != nil {
@@ -134,7 +134,7 @@ func (siw *ServerInterfaceWrapper) PostMessagesIdReplies(w http.ResponseWriter, 
 	var err error
 
 	// ------------- Path parameter "id" -------------
-	var id float32
+	var id int64
 
 	err = runtime.BindStyledParameter("simple", false, "id", chi.URLParam(r, "id"), &id)
 	if err != nil {
