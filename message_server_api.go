@@ -14,8 +14,8 @@ type MessageServer struct {
 	DbConn *redis.Client
 }
 
-//TODO: Create one persistent connection to redis for the MessageServer instead of opening a new one on each request
 //TODO: Better error handling and meaningful response headers/bodies
+//TODO: add content type to responses in a common middleware!!
 //TODO: Golang code golf
 
 func (m MessageServer) PostGroups(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +55,7 @@ func (m MessageServer) PostGroups(w http.ResponseWriter, r *http.Request) {
 		}
 		if exists == true {
 			//don't add a username if it doesn't correspond to a registered user
-			//error here probably
+			//add a warning or possibly error here probably
 			continue
 		}
 		err = m.DbConn.SAdd(ctx, key, name).Err()
@@ -91,18 +91,7 @@ func (m MessageServer) PostMessages(w http.ResponseWriter, r *http.Request) {
 	}
 	key := fmt.Sprintf("message:%d", id)
 	sendTime := time.Now().String()
-	recipients, err := json.Marshal(newMessage.Recipient)
-	if err != nil {
-		log.Printf("Error marshalling json:%s", err)
-	}
-	err = m.DbConn.HSet(ctx, key, "re", 0, "sender", newMessage.Sender, "recipient", string(recipients[:]),
-		"subject", newMessage.Subject, "body", *newMessage.Body, "sentAt", sendTime).Err()
-	if err != nil {
-		log.Printf("Post messages redis error:%s\n", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	fullMessage := Message{
+	respMessage := Message{
 		Id:        id,
 		Sender:    newMessage.Sender,
 		Recipient: newMessage.Recipient,
@@ -110,17 +99,42 @@ func (m MessageServer) PostMessages(w http.ResponseWriter, r *http.Request) {
 		Body:      newMessage.Body,
 		SentAt:    sendTime,
 	}
+	jsonMessage, err := json.Marshal(respMessage)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("Error marshalling json:%s", err)
+		return
+	}
+	err = m.DbConn.Set(ctx, key, jsonMessage, 0).Err()
+	if err != nil {
+		log.Printf("Post messages redis error:%s\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	if err != nil {
 		log.Printf("Post messages redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(fullMessage)
+	w.Write(jsonMessage)
 }
 
 func (m MessageServer) GetMessagesId(w http.ResponseWriter, r *http.Request, id int64) {
-
+	ctx := context.Background()
+	key := fmt.Sprintf("message:%d", id)
+	val, err := m.DbConn.Get(ctx, key).Result()
+	if err == redis.Nil {
+		log.Printf("Get messages/id key not found")
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		log.Printf("Get messages/id redis error:%s\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Write([]byte(val))
 }
 
 func (m MessageServer) GetMessagesIdReplies(w http.ResponseWriter, r *http.Request, id int64) {
