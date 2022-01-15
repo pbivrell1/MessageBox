@@ -1,12 +1,20 @@
 package main
 
 import (
+	"github.com/go-redis/redis/v8"
 	"log"
 	"net/http"
 )
 
 func main() {
-	s := MessageServer{}
+	conn := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", //no auth
+		DB:       0,
+	})
+	s := MessageServer{
+		DbConn: conn,
+	}
 	h := Handler(s)
 
 	log.Println("Server listening on internal container port 3001")
