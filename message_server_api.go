@@ -23,7 +23,6 @@ func (m MessageServer) PostGroups(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	err := json.NewDecoder(r.Body).Decode(&newGroup)
 	if err != nil {
-		//TODO: better error handling, messages etc
 		log.Printf("Post groups json decoder error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -154,6 +153,8 @@ func (m MessageServer) PostUsers(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	// check that the request contains the required fields and the username is not already taken
+	// if not taken, add to redis users set
 	if newUser.Username == "" {
 		log.Printf("Post users invalid request body")
 		w.WriteHeader(http.StatusBadRequest)
@@ -174,6 +175,15 @@ func (m MessageServer) PostUsers(w http.ResponseWriter, r *http.Request) {
 	err = m.DbConn.SAdd(ctx, "users", newUser.Username).Err()
 	if err != nil {
 		log.Printf("Post users redis error:%s\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	// Initialize a database entry for the new user's mailbox to ease lookups in the future
+	// mailbox:username will contain a set of id numbers of each message a user has received
+	key := fmt.Sprintf("mailbox:%s", newUser.Username)
+	err = m.DbConn.SAdd(ctx, key, -1).Err()
+	if err != nil {
+		log.Printf("Post users mailbox init redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
