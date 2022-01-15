@@ -1,16 +1,17 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gomodule/redigo/redis"
+	"github.com/go-redis/redis/v8"
 	"log"
 	"net/http"
 	"time"
 )
 
 type MessageServer struct {
-	//Conn redis.Conn
+	DbConn *redis.Client
 }
 
 //TODO: Create one persistent connection to redis for the MessageServer instead of opening a new one on each request
@@ -18,17 +19,12 @@ type MessageServer struct {
 //TODO: Golang code golf
 
 func (m MessageServer) PostGroups(w http.ResponseWriter, r *http.Request) {
-	conn, err := redis.Dial("tcp", "localhost:6379")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
-
 	var newGroup PostGroupsJSONRequestBody
-	json.NewDecoder(r.Body).Decode(&newGroup)
+	ctx := context.Background()
+	err := json.NewDecoder(r.Body).Decode(&newGroup)
 	if err != nil {
 		//TODO: better error handling, messages etc
-		log.Printf("Post groups json decoder error")
+		log.Printf("Post groups json decoder error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -38,31 +34,31 @@ func (m MessageServer) PostGroups(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	key := fmt.Sprintf("group:%s", newGroup.Groupname)
-	val, err := conn.Do("EXISTS", key)
+	val, err := m.DbConn.Exists(ctx, key).Result()
 	if err != nil {
 		log.Printf("Post groups redis connection error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if val.(int64) != 0 {
+	if val != 0 {
 		log.Println("Post groups duplicate key")
 		w.WriteHeader(http.StatusConflict)
 		err = json.NewEncoder(w).Encode(newGroup)
 		return
 	}
 	for _, name := range newGroup.Usernames {
-		val, err := conn.Do("SISMEMBER", key, name)
+		exists, err := m.DbConn.SIsMember(ctx, key, name).Result()
 		if err != nil {
 			log.Println("Post users redis error")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		if val.(int64) != 0 {
+		if exists == true {
 			//don't add a username if it doesn't correspond to a registered user
 			//error here probably
 			continue
 		}
-		val, err = conn.Do("SADD", key, name)
+		err = m.DbConn.SAdd(ctx, key, name).Err()
 		if err != nil {
 			log.Printf("Post groups redis error:%s\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -74,14 +70,9 @@ func (m MessageServer) PostGroups(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m MessageServer) PostMessages(w http.ResponseWriter, r *http.Request) {
-	conn, err := redis.Dial("tcp", "localhost:6379")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
-
 	var newMessage PostMessagesJSONRequestBody
-	json.NewDecoder(r.Body).Decode(&newMessage)
+	ctx := context.Background()
+	err := json.NewDecoder(r.Body).Decode(&newMessage)
 	if err != nil {
 		log.Printf("Post users json decoder error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -92,27 +83,32 @@ func (m MessageServer) PostMessages(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	id, err := conn.Do("HINCRBY", "idCount", "nextId", 1)
+	id, err := m.DbConn.HIncrBy(ctx, "idCount", "nextID", 1).Result()
 	if err != nil {
 		log.Printf("Post messages redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	key := fmt.Sprintf("message:%d", id.(int64))
-	_, err = conn.Do("HSET", key, "re", 0, "sender", newMessage.Sender, "recipient", newMessage.Recipient,
-		"subject", newMessage.Subject, "body", newMessage.Body, "sentAt", time.Now().String())
+	key := fmt.Sprintf("message:%d", id)
+	sendTime := time.Now().String()
+	recipients, err := json.Marshal(newMessage.Recipient)
+	if err != nil {
+		log.Printf("Error marshalling json:%s", err)
+	}
+	err = m.DbConn.HSet(ctx, key, "re", 0, "sender", newMessage.Sender, "recipient", string(recipients[:]),
+		"subject", newMessage.Subject, "body", *newMessage.Body, "sentAt", sendTime).Err()
 	if err != nil {
 		log.Printf("Post messages redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	fullMessage := Message{
-		Id:        id.(int64),
+		Id:        id,
 		Sender:    newMessage.Sender,
 		Recipient: newMessage.Recipient,
 		Subject:   newMessage.Subject,
 		Body:      newMessage.Body,
-		SentAt:    sendTime.String(),
+		SentAt:    sendTime,
 	}
 	if err != nil {
 		log.Printf("Post messages redis error:%s\n", err)
@@ -124,39 +120,21 @@ func (m MessageServer) PostMessages(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m MessageServer) GetMessagesId(w http.ResponseWriter, r *http.Request, id int64) {
-	conn, err := redis.Dial("tcp", "localhost:6379")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
+
 }
 
 func (m MessageServer) GetMessagesIdReplies(w http.ResponseWriter, r *http.Request, id int64) {
-	conn, err := redis.Dial("tcp", "localhost:6379")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
+
 }
 
 func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Request, id int64) {
-	conn, err := redis.Dial("tcp", "localhost:6379")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
+
 }
 
 func (m MessageServer) PostUsers(w http.ResponseWriter, r *http.Request) {
-	conn, err := redis.Dial("tcp", "localhost:6379")
-	if err != nil {
-		log.Printf("Post users error initializing redis socket")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer conn.Close()
 	var newUser PostUsersJSONRequestBody
-	err = json.NewDecoder(r.Body).Decode(&newUser)
+	ctx := context.Background()
+	err := json.NewDecoder(r.Body).Decode(&newUser)
 	if err != nil {
 		log.Printf("Post users json decoder error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -167,19 +145,19 @@ func (m MessageServer) PostUsers(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	val, err := conn.Do("SISMEMBER", "users", newUser.Username)
+	exists, err := m.DbConn.SIsMember(ctx, "users", newUser.Username).Result()
 	if err != nil {
-		log.Printf("Post users redis error")
+		log.Printf("Post users redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if val.(int64) != 0 {
+	if exists == true {
 		log.Println("Post users duplicate value")
 		w.WriteHeader(http.StatusConflict)
 		err = json.NewEncoder(w).Encode(newUser)
 		return
 	}
-	_, err = conn.Do("SADD", "users", newUser.Username)
+	err = m.DbConn.SAdd(ctx, "users", newUser.Username).Err()
 	if err != nil {
 		log.Printf("Post users redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -190,10 +168,5 @@ func (m MessageServer) PostUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m MessageServer) GetUsersUsernameMailbox(w http.ResponseWriter, r *http.Request, username string) {
-	//TODO: Create one persistent connection to redis for the MessageServer instead of opening a new one on each request
-	conn, err := redis.Dial("tcp", "redis:6379")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
+
 }
