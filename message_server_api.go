@@ -430,19 +430,12 @@ func (m MessageServer) GetUsersUsernameMailbox(w http.ResponseWriter, r *http.Re
 	}
 	var userMail []Message
 	for _, id := range mailIds {
-		<<<<<<< HEAD
 		var message Message
-		=======
-		>>>>>>> f6b369880591827a8fee9a4c14daa2be2f6af5e2
 		key := fmt.Sprintf("message:%s", id)
 		msg, err := m.DbConn.Get(ctx, key).Result()
 		if err != nil {
 			if err == redis.Nil {
-				<<<<<<< HEAD
 				log.Printf("get mailbox message doesn't exist")
-				=======
-				log.Printf("post message reply received non nonexistent message id param")
-				>>>>>>> f6b369880591827a8fee9a4c14daa2be2f6af5e2
 				w.WriteHeader(http.StatusNotFound)
 			} else {
 				log.Printf("Get user mailbox redis error:%s\n", err)
