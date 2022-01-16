@@ -297,6 +297,10 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 		}
 		replyRecipient["groupname"] = val
 		recipients, err = m.DbConn.SMembers(ctx, key).Result()
+		found, err := m.DbConn.SIsMember(ctx, key, ogMessage.Sender).Result()
+		if found == false {
+			recipients = append(recipients, ogMessage.Sender)
+		}
 		if err != nil {
 			log.Printf("Post messages redis error:%s\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -315,12 +319,14 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 		SentAt:    sendTime,
 	}
 	for _, user := range recipients {
-		key := fmt.Sprintf("mailbox:%s", user)
-		err := m.DbConn.LPush(ctx, key, replyId).Err()
-		if err != nil {
-			log.Printf("Post messages redis error:%s\n", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		if user != newMessage.Sender {
+			key := fmt.Sprintf("mailbox:%s", user)
+			err := m.DbConn.LPush(ctx, key, replyId).Err()
+			if err != nil {
+				log.Printf("Post messages redis error:%s\n", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 		}
 	}
 	// marshal and store it
