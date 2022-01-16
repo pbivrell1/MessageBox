@@ -305,12 +305,13 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 	}
 	key = fmt.Sprintf("message:%d", id)
 	sendTime := time.Now().String()
+	subjectStr := fmt.Sprintf("RE: %s", newMessage.Subject)
 	replyMessage := Message{
 		Id:        replyId,
 		Re:        ogMessage.Id,
 		Sender:    newMessage.Sender,
 		Recipient: replyRecipient,
-		Subject:   newMessage.Subject,
+		Subject:   subjectStr,
 		Body:      newMessage.Body,
 		SentAt:    sendTime,
 	}
@@ -384,15 +385,6 @@ func (m MessageServer) PostUsers(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	// initialize the user's mailbox
-	// mailbox:username will contain a set of id numbers of each message a user has received
-	key := fmt.Sprintf("mailbox:%s", newUser.Username)
-	err = m.DbConn.SAdd(ctx, key, -1).Err()
-	if err != nil {
-		log.Printf("Post users mailbox init redis error:%s\n", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(newUser)
@@ -422,32 +414,30 @@ func (m MessageServer) GetUsersUsernameMailbox(w http.ResponseWriter, r *http.Re
 	var userMail []Message
 	var message Message
 	for _, id := range mailIds {
-		if id != "-1" {
-			key := fmt.Sprintf("message:%s", id)
-			msg, err := m.DbConn.Get(ctx, key).Result()
-			if err != nil {
-				if err == redis.Nil {
-					log.Printf("post message reply received non nonexistent message id param")
-					w.WriteHeader(http.StatusNotFound)
-				} else {
-					log.Printf("Get user mailbox redis error:%s\n", err)
-					w.WriteHeader(http.StatusInternalServerError)
-				}
-				return
-			}
-			if err != nil {
+		key := fmt.Sprintf("message:%s", id)
+		msg, err := m.DbConn.Get(ctx, key).Result()
+		if err != nil {
+			if err == redis.Nil {
+				log.Printf("post message reply received non nonexistent message id param")
+				w.WriteHeader(http.StatusNotFound)
+			} else {
 				log.Printf("Get user mailbox redis error:%s\n", err)
 				w.WriteHeader(http.StatusInternalServerError)
-				return
 			}
-			err = json.Unmarshal([]byte(msg), &message)
-			if err != nil {
-				log.Printf("Error unmarshalling json:%s\n", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			userMail = append(userMail, message)
+			return
 		}
+		if err != nil {
+			log.Printf("Get user mailbox redis error:%s\n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		err = json.Unmarshal([]byte(msg), &message)
+		if err != nil {
+			log.Printf("Error unmarshalling json:%s\n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		userMail = append(userMail, message)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(userMail)
