@@ -129,7 +129,7 @@ func (m MessageServer) PostMessages(w http.ResponseWriter, r *http.Request) {
 	if found == true {
 		// if the recipient is an individual user, add the message to the user's mailbox set
 		key := fmt.Sprintf("mailbox:%s", val)
-		err = m.DbConn.SAdd(ctx, key, respMessage.Id).Err()
+		err = m.DbConn.LPush(ctx, key, respMessage.Id).Err()
 		if err != nil {
 			log.Printf("Post messages redis error:%s\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -148,7 +148,7 @@ func (m MessageServer) PostMessages(w http.ResponseWriter, r *http.Request) {
 			}
 			for _, user := range groupMembers {
 				key := fmt.Sprintf("mailbox:%s", user)
-				err := m.DbConn.SAdd(ctx, key, respMessage.Id).Err()
+				err := m.DbConn.LPush(ctx, key, respMessage.Id).Err()
 				if err != nil {
 					log.Printf("Post messages redis error:%s\n", err)
 					w.WriteHeader(http.StatusInternalServerError)
@@ -158,7 +158,7 @@ func (m MessageServer) PostMessages(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(respMessage)
 }
 
@@ -305,19 +305,18 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 	}
 	key = fmt.Sprintf("message:%d", id)
 	sendTime := time.Now().String()
-	subjectStr := fmt.Sprintf("RE: %s", newMessage.Subject)
 	replyMessage := Message{
 		Id:        replyId,
 		Re:        ogMessage.Id,
 		Sender:    newMessage.Sender,
 		Recipient: replyRecipient,
-		Subject:   subjectStr,
+		Subject:   newMessage.Subject,
 		Body:      newMessage.Body,
 		SentAt:    sendTime,
 	}
 	for _, user := range recipients {
 		key := fmt.Sprintf("mailbox:%s", user)
-		err := m.DbConn.SAdd(ctx, key, replyId).Err()
+		err := m.DbConn.LPush(ctx, key, replyId).Err()
 		if err != nil {
 			log.Printf("Post messages redis error:%s\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -405,20 +404,31 @@ func (m MessageServer) GetUsersUsernameMailbox(w http.ResponseWriter, r *http.Re
 		return
 	}
 	key := fmt.Sprintf("mailbox:%s", username)
-	mailIds, err := m.DbConn.SMembers(ctx, key).Result()
+	listLen, err := m.DbConn.LLen(ctx, key).Result()
+	if err != nil {
+		log.Printf("Get user mailbox redis error:%s\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if listLen == 0 {
+		log.Printf("Get user mailbox request for empty mailbox")
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	mailIds, err := m.DbConn.LRange(ctx, key, 0, listLen-1).Result()
 	if err != nil {
 		log.Printf("Get user mailbox redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	var userMail []Message
-	var message Message
 	for _, id := range mailIds {
+		var message Message
 		key := fmt.Sprintf("message:%s", id)
 		msg, err := m.DbConn.Get(ctx, key).Result()
 		if err != nil {
 			if err == redis.Nil {
-				log.Printf("post message reply received non nonexistent message id param")
+				log.Printf("get mailbox message doesn't exist")
 				w.WriteHeader(http.StatusNotFound)
 			} else {
 				log.Printf("Get user mailbox redis error:%s\n", err)
