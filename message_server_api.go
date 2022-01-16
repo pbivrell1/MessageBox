@@ -305,12 +305,13 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 	}
 	key = fmt.Sprintf("message:%d", id)
 	sendTime := time.Now().String()
+	subjectStr := fmt.Sprintf("RE: %s", newMessage.Subject)
 	replyMessage := Message{
 		Id:        replyId,
 		Re:        ogMessage.Id,
 		Sender:    newMessage.Sender,
 		Recipient: replyRecipient,
-		Subject:   newMessage.Subject,
+		Subject:   subjectStr,
 		Body:      newMessage.Body,
 		SentAt:    sendTime,
 	}
