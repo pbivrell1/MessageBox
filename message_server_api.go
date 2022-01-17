@@ -14,12 +14,9 @@ type MessageServer struct {
 	DbConn *redis.Client
 }
 
-//TODO: dockerize it all and docker-compose
-//TODO: ** drastically improve the mailbox system. Store each user's mailbox as a hash maybe
-//TODO: redis pipelining would be cool
-//TODO: bounce unhandled scnearios where user doesnt exist
+//TODO: drastically improve the mailbox system. Store each user's mailbox as a hash maybe
+//TODO: bounce unhandled scnearios where user doesnt exist / user replies to a message they didn't receive
 //TODO: Better error handling and meaningful response headers/bodies
-//TODO: add content type to responses in a common middleware!!
 //TODO: Golang code golf
 func (m MessageServer) PostGroups(w http.ResponseWriter, r *http.Request) {
 	var newGroup PostGroupsJSONRequestBody
@@ -297,6 +294,7 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 		}
 		replyRecipient["groupname"] = val
 		recipients, err = m.DbConn.SMembers(ctx, key).Result()
+		// if the sender is not a member of the group, add them to the recipients so they get the message
 		found, err := m.DbConn.SIsMember(ctx, key, ogMessage.Sender).Result()
 		if found == false {
 			recipients = append(recipients, ogMessage.Sender)
@@ -307,7 +305,6 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 			return
 		}
 	}
-	key = fmt.Sprintf("message:%d", id)
 	sendTime := time.Now().String()
 	subjectStr := fmt.Sprintf("RE: %s", newMessage.Subject)
 	replyMessage := Message{
@@ -319,6 +316,9 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 		Body:      newMessage.Body,
 		SentAt:    sendTime,
 	}
+	/*	iterate through the recipients and add to their mailboxes. If the recipient is also the sender (sender in group)
+		then don't put the message in their mailbox. Had to add this when I switched the mailboxes from sets to lists */
+	// TODO: maybe use a different data structure for the mailboxes, worry about it later
 	for _, user := range recipients {
 		if user != newMessage.Sender {
 			key := fmt.Sprintf("mailbox:%s", user)

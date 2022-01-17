@@ -1,0 +1,936 @@
+{
+	"info": {
+		"_postman_id": "c24532c8-06bf-42bb-abc0-d7e655f27dac",
+		"name": "API Tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "/user - POST",
+			"item": [
+				{
+					"name": "Register a new user - success",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"username\": \"{{user}}\"\n}"
+						},
+						"url": "{{url}}/users"
+					},
+					"response": []
+				},
+				{
+					"name": "Register a new user - success Copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"username\": \"{{user_2}}\"\n}"
+						},
+						"url": "{{url}}/users"
+					},
+					"response": []
+				},
+				{
+					"name": "Register a new user - fail 409 duplicate",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 409\", function () {",
+									"    pm.response.to.have.status(409);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"username\": \"{{user}}\"\n}"
+						},
+						"url": "{{url}}/users"
+					},
+					"response": []
+				},
+				{
+					"name": "Register a new user - fail 400 bad request",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"oh_no\": \"bad request!\"\n}"
+						},
+						"url": "{{url}}/users"
+					},
+					"response": []
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "/groups - POST",
+			"item": [
+				{
+					"name": "Register Group - success",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"groupname\": \"{{group}}\",\n  \"usernames\": [\n\t\"{{user}}\"\n  ]\n}"
+						},
+						"url": "{{url}}/groups"
+					},
+					"response": []
+				},
+				{
+					"name": "Register Group - fail - 409",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 409\", function () {",
+									"    pm.response.to.have.status(409);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"groupname\": \"{{group}}\",\n  \"usernames\": [\n\t\"{{user}}\"\n  ]\n}"
+						},
+						"url": "{{url}}/groups"
+					},
+					"response": []
+				},
+				{
+					"name": "Register Group - fail - 409 Copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"oh_no\": \"no group name!\",\n  \"usernames\": [\n\t\"{{user}}\"\n  ]\n}"
+						},
+						"url": "{{url}}/groups"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "/messages - POST",
+			"item": [
+				{
+					"name": "Create message - success group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Message ID is in the response\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    console.log(jsonData);",
+									"    pm.expect(!!jsonData.id).to.be.true; //non empty",
+									"    ",
+									"    if (jsonData.id) {",
+									"        pm.globals.set(\"message_id\", jsonData.id);",
+									"    }",
+									"    ",
+									"    console.log('saved message_id ', jsonData.id);",
+									"});",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sender\": \"{{user}}\",\n  \"recipient\": {\n    \"groupname\": \"{{group}}\"\n  },\n  \"subject\": \"{{group_subject}}\",\n  \"body\": \"{{group_body}}\"\n}"
+						},
+						"url": "{{url}}/messages"
+					},
+					"response": []
+				},
+				{
+					"name": "Create message - success user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Message ID is in the response\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(!!jsonData.id).to.be.true; //non empty",
+									"    ",
+									"    if (jsonData.id) {",
+									"        pm.globals.set(\"message_id_2\", jsonData.id);",
+									"    }",
+									"    ",
+									"    console.log('saved message_id_2 ', jsonData.id);",
+									"});",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sender\": \"{{user}}\",\n  \"recipient\": {\n    \"username\": \"{{user_2}}\"\n  },\n  \"subject\": \"{{user_subject}}\",\n  \"body\": \"{{user_body}}\"\n}"
+						},
+						"url": "{{url}}/messages"
+					},
+					"response": []
+				},
+				{
+					"name": "Create message - fail",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"oh_no\": \"no sender!\",\n  \"recipient\": {\n    \"group\": \"{{group}}\"\n  },\n  \"subject\": \"{{group_subject}}\",\n  \"body\": \"{{group_body}}\"\n}"
+						},
+						"url": "{{url}}/users"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "/users/{username}/mailbox - GET",
+			"item": [
+				{
+					"name": "Get Messages - success",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Has one message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.length).to.eql(1);",
+									"});",
+									"",
+									"pm.test(\"Has expected message id\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData[0].id).to.eql(pm.globals.get(\"message_id_2\"));",
+									"});",
+									"",
+									"pm.test(\"Has expected message body\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData[0].body).to.eql(pm.variables.get(\"user_body\"));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"url": "{{url}}/users/{{user_2}}/mailbox"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Messages - success",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"One message from the group\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.length).to.equal(1);",
+									"});",
+									"",
+									"",
+									"pm.test(\"One message from the group\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData[0].id).to.equal(pm.globals.get(\"message_id\"));",
+									"});",
+									"",
+									"",
+									"pm.test(\"Correct body\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData[0].body).to.equal(pm.variables.get(\"group_body\"));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"url": "{{url}}/users/{{user}}/mailbox"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Messages - fail 404",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"url": "{{url}}/users/superman/mailbox"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "/messages/{id} - GET",
+			"item": [
+				{
+					"name": "Get Message - success",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Correct message body\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.body).to.eql(pm.variables.get(\"group_body\"));",
+									"});",
+									"",
+									"",
+									"pm.test(\"Correct message recipient\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.recipient.groupname).to.eql(pm.variables.get(\"group\"));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{url}}/messages/{{message_id}}"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Message - fail",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{url}}/messages/12345789"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "/messages/{id}/replies - POST",
+			"item": [
+				{
+					"name": "Create Reply - success",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sender\": \"{{user}}\",\n  \"subject\": \"{{reply_subject}}\",\n  \"body\": \"{{reply_body}}\"\n}"
+						},
+						"url": "{{url}}/messages/{{message_id}}/replies"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Reply - success",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sender\": \"{{user_2}}\",\n  \"subject\": \"{{reply_subject_2}}\",\n  \"body\": \"{{reply_body_2}}\"\n}"
+						},
+						"url": "{{url}}/messages/{{message_id_2}}/replies"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "/messages/{id}/replies - GET",
+			"item": [
+				{
+					"name": "Get Replies - success",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Only one reply\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.length).to.eql(1);",
+									"});",
+									"",
+									"pm.test(\"Your test name\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData[0].body).to.eql(pm.variables.get(\"reply_body\"));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{url}}/messages/{{message_id}}/replies"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Replies - 404",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{url}}/messages/1234567/replies"
+					},
+					"response": []
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "/users/{username}/mailbox - GET with replies",
+			"item": [
+				{
+					"name": "Get Messages - success",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// these tests seemingly cannot pass. after stepping through a number of times",
+									"// I cannot think of a way user2 is supposed to have two messages here.",
+									"// The test name also says one message, so I think this could be a mistake.",
+									"pm.test(\"Has one message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.length).to.eql(2);",
+									"});",
+									"",
+									"pm.test(\"Has expected message id\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData[1].id).to.eql(pm.globals.get(\"message_id_2\"));",
+									"});",
+									"",
+									"pm.test(\"Has expected message body\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData[1].body).to.eql(pm.variables.get(\"user_body\"));",
+									"});",
+									"",
+									"pm.test(\"Has expected message body for reply\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData[0].body).to.eql(pm.variables.get(\"reply_body_2\"));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"url": "{{url}}/users/{{user_2}}/mailbox"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Messages - success",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"One message from the group\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.length).to.equal(2);",
+									"});",
+									"",
+									"",
+									"pm.test(\"One message from the group\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData[1].id).to.equal(pm.globals.get(\"message_id\"));",
+									"});",
+									"",
+									"",
+									"pm.test(\"Correct body\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData[1].body).to.equal(pm.variables.get(\"group_body\"));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"url": "{{url}}/users/{{user}}/mailbox"
+					},
+					"response": []
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "url",
+			"value": "localhost:3001"
+		},
+		{
+			"key": "group",
+			"value": "quantummetric"
+		},
+		{
+			"key": "user",
+			"value": "super.mario"
+		},
+		{
+			"key": "group_subject",
+			"value": "Lunch"
+		},
+		{
+			"key": "group_body",
+			"value": "Wanna grab some lunch at Fuzzy's?"
+		},
+		{
+			"key": "user_2",
+			"value": "indy.cat"
+		},
+		{
+			"key": "user_body",
+			"value": "Whats up?"
+		},
+		{
+			"key": "user_subject",
+			"value": "Hey!"
+		},
+		{
+			"key": "reply_subject",
+			"value": "Im replying!!!"
+		},
+		{
+			"key": "reply_body",
+			"value": "Wow, this is a reply!"
+		},
+		{
+			"key": "reply_body_2",
+			"value": "Another reply??? WOW!!!"
+		},
+		{
+			"key": "reply_subject_2",
+			"value": "Guess what??"
+		}
+	]
+}

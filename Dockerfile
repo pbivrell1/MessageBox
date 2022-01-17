@@ -1,15 +1,14 @@
 # syntax=docker/Dockerfile:1
 
-FROM golang:1.17.6-alpine
-
+FROM golang:1.17.6-alpine as base
 WORKDIR /app
-
 COPY go.mod ./
-
+COPY go.sum ./
 RUN go mod download
+COPY *.go ./
+RUN go build -o messagebox-server .
 
-COPY internal/*.go ./
-
-RUN go build -o /messagebox-server
-
-CMD ["/messagebox-server"]
+FROM alpine:latest
+WORKDIR /app
+COPY --from=base /app /app
+CMD ["./messagebox-server"]
