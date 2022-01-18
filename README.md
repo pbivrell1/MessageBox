@@ -8,7 +8,8 @@ The server scaffolding and middleware for this project was generated using [oapi
 The provided test collection has been slightly modified to include 201 (rather than 202) status codes per the swagger spec. However, there are other problems with the test collection that are described in detail toward the bottom of this document.
 ## how to run
 Pre-requisites: docker and docker-compose must be installed.\
-To run this package once the pre-requisites are met:\
+To run this package once the pre-requisites are met:
+
 * from the base repo directory run `docker-compose up --build`. This will deploy two containers: one for the redis database and another for the http server
 * get the IP address of your docker container by running `docker ps` then identifying the `CONTAINER ID` of the `Messagebox` container. Then run `docker inspect [CONTAINER ID]` and identify the IP address of the container.
 
