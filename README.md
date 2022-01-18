@@ -1,4 +1,4 @@
-# message-api
+# MessageBox
 ## overview
 This repo contains everything needed to deploy the small message box api described in the QM challenge.\
 The docker-compose file will deploy a redis database and go http server with the required API implementation. The redis deployment can be configured by editing the  /redis/conf/redis.conf file located in the repository before deploying with docker-compose
