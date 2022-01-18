@@ -14,10 +14,8 @@ type MessageServer struct {
 	DbConn *redis.Client
 }
 
-//TODO: drastically improve the mailbox system. Store each user's mailbox as a hash maybe
-//TODO: bounce unhandled scnearios where user doesnt exist / user replies to a message they didn't receive
-//TODO: Better error handling and meaningful response headers/bodies
-//TODO: Golang code golf
+//TODO: reconsider database structures. probably shouldn't store every reply twice
+//TODO: Better error handling and meaningful response headers for bad requests
 func (m MessageServer) PostGroups(w http.ResponseWriter, r *http.Request) {
 	var newGroup PostGroupsJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&newGroup); err != nil {
@@ -235,7 +233,7 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	// stuff should be *somewhat* validated here, go ahead and unmarshal and get the original sender then build the reply
+	// stuff should be *somewhat* validated here, go ahead and unmarshal the original msg and build the reply message
 	var ogMessage Message
 	err = json.Unmarshal([]byte(msg), &ogMessage)
 	if err != nil {
