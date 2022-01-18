@@ -47,6 +47,6 @@ The failing tests expect the following:
 
 user1 to have 2 messages - the message at [1] to be the original group message sent by user1 to its own group - seemingly user1 should have not received one of either the group reply or the reply sent to the message originally sent from user1 to user2 but this conflicts with the requirements.
 
-user2 to have 2 messages - the message at [1] should be the message sent from user 1, the message at [0] should be the reply sent by user1 to the message sent from user 1 to user 2. However, user 2 does not have this message since it was sent as a reply to a message originally sent by user1.
+user2 to have 2 messages - the message at [1] should be the message(2) sent from user 1, the message at [0] should be the reply message(4) sent by user1 to the message sent from user 1 to user 2. However, user 2 does not have this message since it was sent as a reply to a message originally sent by user1.
 
 I've thought out a few ways to manipulate both the code and test logic to get some of these to pass. For instance, if I introduce logic to send a user to user reply to both the original sender and original recipient, user2's mailbox tests will pass since they receive the reply to message(2) (the message from user1 to user2).
