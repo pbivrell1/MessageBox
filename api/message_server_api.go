@@ -20,7 +20,7 @@ type MessageServer struct {
 func InitMessageServer(logFile *os.File) MessageServer {
 	var s MessageServer
 	s.dbConn = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     "redis:6379",
 		Password: "", //no auth
 		DB:       0,
 	})
