@@ -4,7 +4,7 @@ services:
     image: redis:latest
     command: [ "redis-server", "/usr/local/etc/redis/redis.conf" ]
     ports:
-      - 6379:6379
+      - "6379:6379"
     volumes:
       - ./redis/conf:/usr/local/etc/redis/
 
@@ -13,4 +13,4 @@ services:
       dockerfile: Dockerfile
       context: .
     ports:
-      - 3001:3001
+      - "3001:3001"
