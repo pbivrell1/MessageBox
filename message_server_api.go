@@ -82,7 +82,7 @@ func (m MessageServer) PostMessages(w http.ResponseWriter, r *http.Request) {
 	// use an incremented redis value to store the next available unique integer id
 	// TODO: do this a better way maybe, works for now
 	ctx := context.Background()
-	id, err := m.DbConn.HIncrBy(ctx, "idCount", "nextID", 1).Result()
+	id, err := m.DbConn.IncrBy(ctx, "nextID", 1).Result()
 	if err != nil {
 		log.Printf("Post messages redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -243,7 +243,7 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	replyId, err := m.DbConn.HIncrBy(ctx, "idCount", "nextID", 1).Result()
+	replyId, err := m.DbConn.IncrBy(ctx, "nextID", 1).Result()
 	if err != nil {
 		log.Printf("Post messages reply redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -287,7 +287,7 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 			w.WriteHeader(http.StatusGone)
 			return
 		}
-		// set the Recipient that will be used for the reply as well as the recipients for mailbox delivery
+		// set the Recipient that will be used for the Recipient field as well as the recipients for mailbox delivery
 		replyRecipient["groupname"] = group
 		recipients, err = m.DbConn.SMembers(ctx, key).Result()
 		// if the original message's sender is not a member of the group, add them to the recipients
@@ -317,13 +317,19 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 		SentAt:    sendTime,
 	}
 	// iterate through the recipients and add to their mailboxes
+	pipe := m.DbConn.Pipeline()
 	for _, user := range recipients {
 		key := fmt.Sprintf("mailbox:%s", user)
-		if err := m.DbConn.LPush(ctx, key, replyId).Err(); err != nil {
-			log.Printf("Post messages redis error:%s\n", err)
+		if err := pipe.LPush(ctx, key, replyId).Err(); err != nil {
+			log.Printf("Post messages redis pipelining error:%s\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+	}
+	if _, err = pipe.Exec(ctx); err != nil {
+		log.Printf("Post messages redis pipelining error:%s\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	// marshal and store it
 	jsonMessage, err := json.Marshal(replyMessage)
@@ -341,8 +347,7 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 	}
 	// store in redis all the replies to a single message in a set, so we can get them easily later
 	key = fmt.Sprintf("replies:%d", id)
-	err = m.DbConn.SAdd(ctx, key, jsonMessage).Err()
-	if err != nil {
+	if err = m.DbConn.SAdd(ctx, key, jsonMessage).Err(); err != nil {
 		log.Printf("Post messages reply redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -354,8 +359,7 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 
 func (m MessageServer) PostUsers(w http.ResponseWriter, r *http.Request) {
 	var newUser PostUsersJSONRequestBody
-	err := json.NewDecoder(r.Body).Decode(&newUser)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&newUser); err != nil {
 		log.Printf("Post users json decoder error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -380,8 +384,7 @@ func (m MessageServer) PostUsers(w http.ResponseWriter, r *http.Request) {
 		err = json.NewEncoder(w).Encode(newUser)
 		return
 	}
-	err = m.DbConn.SAdd(ctx, "users", newUser.Username).Err()
-	if err != nil {
+	if err = m.DbConn.SAdd(ctx, "users", newUser.Username).Err(); err != nil {
 		log.Printf("Post users redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -424,6 +427,7 @@ func (m MessageServer) GetUsersUsernameMailbox(w http.ResponseWriter, r *http.Re
 		return
 	}
 	var userMail []Message
+	// TODO: pipeline this batch of gets
 	for _, id := range mailIds {
 		var message Message
 		key := fmt.Sprintf("message:%s", id)
@@ -438,13 +442,7 @@ func (m MessageServer) GetUsersUsernameMailbox(w http.ResponseWriter, r *http.Re
 			}
 			return
 		}
-		if err != nil {
-			log.Printf("Get user mailbox redis error:%s\n", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		err = json.Unmarshal([]byte(msg), &message)
-		if err != nil {
+		if err = json.Unmarshal([]byte(msg), &message); err != nil {
 			log.Printf("Error unmarshalling json:%s\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
