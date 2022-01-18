@@ -1,4 +1,4 @@
-module github.com/mgheebs/MessageBox.git
+module github.com/mgheebs/MessageBox
 
 go 1.17
 

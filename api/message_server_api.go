@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/go-redis/redis/v8"
 	"github.com/mgheebs/MessageBox/types"
 	"log"
 	"net/http"
@@ -16,17 +17,16 @@ type MessageServer struct {
 	logger *log.Logger
 }
 
-func (m MessageServer) InitMessageServer(logFile *os.File) {
-	m.dbConn = redis.NewClient(&redis.Options{
-		Addr:     "redis:6379",
+func InitMessageServer(logFile *os.File) MessageServer {
+	var s MessageServer
+	s.dbConn = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
 		Password: "", //no auth
 		DB:       0,
 	})
-	m.logger = log.New(logFile, "MessageboxAPI:", log.LstdFlags)
-	m.logger.Println("Server listening on internal container port 3001")
+	s.logger = log.New(logFile, "MessageboxAPI:", log.LstdFlags)
+	return s
 }
-
-//TODO: reconsider database structures. probably shouldn't store every reply twice
 func (m MessageServer) PostGroups(w http.ResponseWriter, r *http.Request) {
 	var newGroup types.PostGroupsJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&newGroup); err != nil {
