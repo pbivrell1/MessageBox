@@ -12,6 +12,7 @@ import (
 
 type MessageServer struct {
 	DbConn *redis.Client
+	logger *log.Logger
 }
 
 //TODO: reconsider database structures. probably shouldn't store every reply twice
@@ -19,12 +20,12 @@ type MessageServer struct {
 func (m MessageServer) PostGroups(w http.ResponseWriter, r *http.Request) {
 	var newGroup PostGroupsJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&newGroup); err != nil {
-		log.Printf("Post groups json decoder error:%s\n", err)
+		m.logger.Printf("Post groups json decoder error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	if newGroup.Groupname == "" || len(newGroup.Usernames) == 0 {
-		log.Printf("Post groups invalid request body")
+		m.logger.Printf("Post groups invalid request body")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -32,12 +33,12 @@ func (m MessageServer) PostGroups(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	val, err := m.DbConn.Exists(ctx, key).Result()
 	if err != nil {
-		log.Printf("Post groups redis connection error:%s\n", err)
+		m.logger.Printf("Post groups redis connection error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	if val != 0 {
-		log.Println("Post groups duplicate key")
+		m.logger.Println("Post groups duplicate key")
 		w.WriteHeader(http.StatusConflict)
 		err = json.NewEncoder(w).Encode(newGroup)
 		return
@@ -45,7 +46,7 @@ func (m MessageServer) PostGroups(w http.ResponseWriter, r *http.Request) {
 	for _, name := range newGroup.Usernames {
 		exists, err := m.DbConn.SIsMember(ctx, key, name).Result()
 		if err != nil {
-			log.Println("Post users redis error")
+			m.logger.Println("Post users redis error")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -55,7 +56,7 @@ func (m MessageServer) PostGroups(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if err = m.DbConn.SAdd(ctx, key, name).Err(); err != nil {
-			log.Printf("Post groups redis error:%s\n", err)
+			m.logger.Printf("Post groups redis error:%s\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -68,12 +69,12 @@ func (m MessageServer) PostGroups(w http.ResponseWriter, r *http.Request) {
 func (m MessageServer) PostMessages(w http.ResponseWriter, r *http.Request) {
 	var newMessage PostMessagesJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&newMessage); err != nil {
-		log.Printf("Post users json decoder error:%s\n", err)
+		m.logger.Printf("Post users json decoder error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	if newMessage.Sender == "" || newMessage.Recipient == "" || newMessage.Subject == "" {
-		log.Printf("Post messages invalid request body")
+		m.logger.Printf("Post messages invalid request body")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -82,7 +83,7 @@ func (m MessageServer) PostMessages(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	id, err := m.DbConn.IncrBy(ctx, "nextID", 1).Result()
 	if err != nil {
-		log.Printf("Post messages redis error:%s\n", err)
+		m.logger.Printf("Post messages redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -98,20 +99,20 @@ func (m MessageServer) PostMessages(w http.ResponseWriter, r *http.Request) {
 	}
 	jsonMessage, err := json.Marshal(respMessage)
 	if err != nil {
-		log.Printf("Error marshalling json:%s\n", err)
+		m.logger.Printf("Error marshalling json:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	key := fmt.Sprintf("message:%d", id)
 	if err = m.DbConn.Set(ctx, key, jsonMessage, 0).Err(); err != nil {
-		log.Printf("Post messages redis error:%s\n", err)
+		m.logger.Printf("Post messages redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	// if the message successfully posted, add it to the appropriate mailboxes
 	recipients, ok := newMessage.Recipient.(map[string]interface{})
 	if recipients == nil || ok == false {
-		log.Println("Post messages unexpected typecasting error")
+		m.logger.Println("Post messages unexpected typecasting error")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -121,7 +122,7 @@ func (m MessageServer) PostMessages(w http.ResponseWriter, r *http.Request) {
 		key := fmt.Sprintf("mailbox:%s", val)
 		err = m.DbConn.LPush(ctx, key, respMessage.Id).Err()
 		if err != nil {
-			log.Printf("Post messages redis error:%s\n", err)
+			m.logger.Printf("Post messages redis error:%s\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -130,7 +131,7 @@ func (m MessageServer) PostMessages(w http.ResponseWriter, r *http.Request) {
 		key := fmt.Sprintf("group:%s", val)
 		groupMembers, err := m.DbConn.SMembers(ctx, key).Result()
 		if err != nil {
-			log.Printf("Post messages redis error:%s\n", err)
+			m.logger.Printf("Post messages redis error:%s\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -138,7 +139,7 @@ func (m MessageServer) PostMessages(w http.ResponseWriter, r *http.Request) {
 			key := fmt.Sprintf("mailbox:%s", user)
 			err := m.DbConn.LPush(ctx, key, respMessage.Id).Err()
 			if err != nil {
-				log.Printf("Post messages redis error:%s\n", err)
+				m.logger.Printf("Post messages redis error:%s\n", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -157,17 +158,17 @@ func (m MessageServer) GetMessagesId(w http.ResponseWriter, r *http.Request, id 
 	if err != nil {
 		if err == redis.Nil {
 			w.WriteHeader(http.StatusNotFound)
-			log.Printf("get messages/id non nonexistent message id param")
+			m.logger.Printf("get messages/id non nonexistent message id param")
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Printf("Post users redis error:%s\n", err)
+			m.logger.Printf("Post users redis error:%s\n", err)
 		}
 		return
 	}
 	var message Message
 	if err = json.Unmarshal([]byte(msg), &message); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("Error unmarshalling json:%s\n", err)
+		m.logger.Printf("Error unmarshalling json:%s\n", err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -179,19 +180,19 @@ func (m MessageServer) GetMessagesIdReplies(w http.ResponseWriter, r *http.Reque
 	ctx := context.Background()
 	exists, err := m.DbConn.Exists(ctx, key).Result()
 	if err != nil {
-		log.Printf("Get message replies redis error:%s\n", err)
+		m.logger.Printf("Get message replies redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	if exists == 0 {
-		log.Printf("Get message replies received nonexistent key")
+		m.logger.Printf("Get message replies received nonexistent key")
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	key = fmt.Sprintf("replies:%d", id)
 	replies, err := m.DbConn.SMembers(ctx, key).Result()
 	if err != nil {
-		log.Printf("Get user mailbox redis error:%s\n", err)
+		m.logger.Printf("Get user mailbox redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -200,7 +201,7 @@ func (m MessageServer) GetMessagesIdReplies(w http.ResponseWriter, r *http.Reque
 	for _, reply := range replies {
 		err = json.Unmarshal([]byte(reply), &message)
 		if err != nil {
-			log.Printf("Error unmarshalling json:%s\n", err)
+			m.logger.Printf("Error unmarshalling json:%s\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -218,10 +219,10 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 	msg, err := m.DbConn.Get(ctx, key).Result()
 	if err != nil {
 		if err == redis.Nil {
-			log.Printf("post message reply received non nonexistent message id param")
+			m.logger.Printf("post message reply received non nonexistent message id param")
 			w.WriteHeader(http.StatusNotFound)
 		} else {
-			log.Printf("Post users redis error:%s\n", err)
+			m.logger.Printf("Post users redis error:%s\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		return
@@ -229,7 +230,7 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 	var newMessage PostMessagesIdRepliesJSONBody
 	json.NewDecoder(r.Body).Decode(&newMessage)
 	if newMessage.Sender == "" || newMessage.Subject == "" {
-		log.Printf("Post messages reply invalid request body")
+		m.logger.Printf("Post messages reply invalid request body")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -237,19 +238,19 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 	var ogMessage Message
 	err = json.Unmarshal([]byte(msg), &ogMessage)
 	if err != nil {
-		log.Printf("Error unmarshalling json:%s\n", err)
+		m.logger.Printf("Error unmarshalling json:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	replyId, err := m.DbConn.IncrBy(ctx, "nextID", 1).Result()
 	if err != nil {
-		log.Printf("Post messages reply redis error:%s\n", err)
+		m.logger.Printf("Post messages reply redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	ogRecipient, ok := ogMessage.Recipient.(map[string]interface{})
 	if ogRecipient == nil || ok == false {
-		log.Println("Post messages reply unexpected typecasting error")
+		m.logger.Println("Post messages reply unexpected typecasting error")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -259,12 +260,12 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 		// if the original recipient is a single user who exists, send this message back to the sender
 		exists, err := m.DbConn.SIsMember(ctx, "users", user).Result()
 		if err != nil {
-			log.Printf("Post messages reply redis error:%s\n", err)
+			m.logger.Printf("Post messages reply redis error:%s\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		if exists == false {
-			log.Println("Post messages reply original sender not found")
+			m.logger.Println("Post messages reply original sender not found")
 			w.WriteHeader(http.StatusGone)
 			return
 		}
@@ -276,12 +277,12 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 		key := fmt.Sprintf("group:%s", group)
 		exists, err := m.DbConn.Exists(ctx, key).Result()
 		if err != nil {
-			log.Printf("Post messages reply redis error:%s\n", err)
+			m.logger.Printf("Post messages reply redis error:%s\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		if exists == 0 {
-			log.Println("Post messages reply group not found")
+			m.logger.Println("Post messages reply group not found")
 			w.WriteHeader(http.StatusGone)
 			return
 		}
@@ -291,7 +292,7 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 		// if the original message's sender is not a member of the group, add them to the recipients
 		found, err := m.DbConn.SIsMember(ctx, key, ogMessage.Sender).Result()
 		if err != nil {
-			log.Printf("Post messages redis error:%s\n", err)
+			m.logger.Printf("Post messages redis error:%s\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -300,7 +301,7 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 		}
 	} else {
 		// need to handle this case when the original message is sent, but just in case
-		log.Println("recipient json key was unrecognized")
+		m.logger.Println("recipient json key was unrecognized")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -319,34 +320,34 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 	for _, user := range recipients {
 		key := fmt.Sprintf("mailbox:%s", user)
 		if err := pipe.LPush(ctx, key, replyId).Err(); err != nil {
-			log.Printf("Post messages redis pipelining error:%s\n", err)
+			m.logger.Printf("Post messages redis pipelining error:%s\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
 	if _, err = pipe.Exec(ctx); err != nil {
-		log.Printf("Post messages redis pipelining error:%s\n", err)
+		m.logger.Printf("Post messages redis pipelining error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	// marshal and store it
 	jsonMessage, err := json.Marshal(replyMessage)
 	if err != nil {
-		log.Printf("Error marshalling json:%s\n", err)
+		m.logger.Printf("Error marshalling json:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	key = fmt.Sprintf("message:%d", replyId)
 	err = m.DbConn.Set(ctx, key, jsonMessage, 0).Err()
 	if err != nil {
-		log.Printf("Post messages reply redis error:%s\n", err)
+		m.logger.Printf("Post messages reply redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	// store in redis all the replies to a single message in a set, so we can get them easily later
 	key = fmt.Sprintf("replies:%d", id)
 	if err = m.DbConn.SAdd(ctx, key, jsonMessage).Err(); err != nil {
-		log.Printf("Post messages reply redis error:%s\n", err)
+		m.logger.Printf("Post messages reply redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -358,32 +359,32 @@ func (m MessageServer) PostMessagesIdReplies(w http.ResponseWriter, r *http.Requ
 func (m MessageServer) PostUsers(w http.ResponseWriter, r *http.Request) {
 	var newUser PostUsersJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&newUser); err != nil {
-		log.Printf("Post users json decoder error:%s\n", err)
+		m.logger.Printf("Post users json decoder error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	// check that the request contains the required fields and the username is not already taken
 	// if not taken, add to redis users set
 	if newUser.Username == "" {
-		log.Printf("Post users invalid request body")
+		m.logger.Printf("Post users invalid request body")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	ctx := context.Background()
 	exists, err := m.DbConn.SIsMember(ctx, "users", newUser.Username).Result()
 	if err != nil {
-		log.Printf("Post users redis error:%s\n", err)
+		m.logger.Printf("Post users redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	if exists == true {
-		log.Println("Post users duplicate value")
+		m.logger.Println("Post users duplicate value")
 		w.WriteHeader(http.StatusConflict)
 		err = json.NewEncoder(w).Encode(newUser)
 		return
 	}
 	if err = m.DbConn.SAdd(ctx, "users", newUser.Username).Err(); err != nil {
-		log.Printf("Post users redis error:%s\n", err)
+		m.logger.Printf("Post users redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -397,30 +398,30 @@ func (m MessageServer) GetUsersUsernameMailbox(w http.ResponseWriter, r *http.Re
 	// check first that the passed username exists in redis
 	exists, err := m.DbConn.SIsMember(ctx, "users", username).Result()
 	if err != nil {
-		log.Printf("Get user mailbox redis error:%s\n", err)
+		m.logger.Printf("Get user mailbox redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	if exists == false {
-		log.Printf("Get user mailbox was passed an unknown username\n")
+		m.logger.Printf("Get user mailbox was passed an unknown username\n")
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	key := fmt.Sprintf("mailbox:%s", username)
 	listLen, err := m.DbConn.LLen(ctx, key).Result()
 	if err != nil {
-		log.Printf("Get user mailbox redis error:%s\n", err)
+		m.logger.Printf("Get user mailbox redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	if listLen == 0 {
-		log.Printf("Get user mailbox request for empty mailbox")
+		m.logger.Printf("Get user mailbox request for empty mailbox")
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	mailIds, err := m.DbConn.LRange(ctx, key, 0, listLen-1).Result()
 	if err != nil {
-		log.Printf("Get user mailbox redis error:%s\n", err)
+		m.logger.Printf("Get user mailbox redis error:%s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -432,16 +433,16 @@ func (m MessageServer) GetUsersUsernameMailbox(w http.ResponseWriter, r *http.Re
 		msg, err := m.DbConn.Get(ctx, key).Result()
 		if err != nil {
 			if err == redis.Nil {
-				log.Printf("get mailbox message doesn't exist")
+				m.logger.Printf("get mailbox message doesn't exist")
 				w.WriteHeader(http.StatusNotFound)
 			} else {
-				log.Printf("Get user mailbox redis error:%s\n", err)
+				m.logger.Printf("Get user mailbox redis error:%s\n", err)
 				w.WriteHeader(http.StatusInternalServerError)
 			}
 			return
 		}
 		if err = json.Unmarshal([]byte(msg), &message); err != nil {
-			log.Printf("Error unmarshalling json:%s\n", err)
+			m.logger.Printf("Error unmarshalling json:%s\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

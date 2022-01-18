@@ -10,5 +10,5 @@ RUN go build -o messagebox-server .
 
 FROM alpine:latest
 WORKDIR /app
-COPY --from=base /app /app
+COPY --from=base /app/messagebox-server /app
 CMD ["./messagebox-server"]
